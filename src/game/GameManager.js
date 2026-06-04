@@ -65,6 +65,13 @@ export class GameManager {
           this._autoPass(localPlayer);
         }
       }
+
+      // F key: pick up loose ball (both modes)
+      if (code === 'KeyF' && !localPlayer.hasBall && !this.ball.owner) {
+        if (this.ball.isNearPlayer(localPlayer.position, 4.0)) {
+          this.pickupBall(localPlayer, this.ball);
+        }
+      }
     });
 
     inputManager.on('keyup', code => {
@@ -442,7 +449,7 @@ export class GameManager {
       ai.update(delta, this.ball, opponents, teammates);
 
       // Auto pickup
-      if (!this.ball.owner && this.ball.isNearPlayer(ai.player.position, 1.0)) {
+      if (!this.ball.owner && this.ball.isNearPlayer(ai.player.position, 1.5)) {
         this.pickupBall(ai.player, this.ball);
       }
     });
@@ -454,8 +461,8 @@ export class GameManager {
       }
     });
 
-    // Ball loose pickup by local player
-    if (localPlayer && !this.ball.owner && this.ball.isNearPlayer(localPlayer.position, 1.2)) {
+    // Ball loose pickup by local player (auto, generous radius)
+    if (localPlayer && !this.ball.owner && this.ball.isNearPlayer(localPlayer.position, 2.5)) {
       this.pickupBall(localPlayer, this.ball);
     }
 

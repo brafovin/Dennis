@@ -245,8 +245,8 @@ export class Ball {
 
   _checkBasketCollision() {
     const rims = [
-      { z: COURT.LENGTH / 2 - HOOP.OVERHANG + 0.08 + HOOP.RIM_RADIUS, side: 1 },
-      { z: -(COURT.LENGTH / 2 - HOOP.OVERHANG + 0.08 + HOOP.RIM_RADIUS), side: -1 },
+      { z: COURT.LENGTH / 2 - HOOP.OVERHANG, side: 1 },
+      { z: -(COURT.LENGTH / 2 - HOOP.OVERHANG), side: -1 },
     ];
 
     for (const rim of rims) {

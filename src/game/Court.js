@@ -178,9 +178,8 @@ export class Court {
 
   _createHoop(side) {
     const hoopGroup = new THREE.Group();
-    const W2 = COURT.LENGTH / 2 - HOOP.OVERHANG;
 
-    // Pole
+    // Pole stands at the baseline wall
     const poleGeo = new THREE.CylinderGeometry(HOOP.POLE_RADIUS, HOOP.POLE_RADIUS, HOOP.HEIGHT, 8);
     const poleMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
     const pole = new THREE.Mesh(poleGeo, poleMat);
@@ -188,27 +187,27 @@ export class Court {
     pole.castShadow = true;
     hoopGroup.add(pole);
 
-    // Backboard
+    // Backboard sits just inside the wall (local z = -side*0.05 so world z = side*(14-0.05))
     const bbGeo = new THREE.BoxGeometry(HOOP.BACKBOARD_WIDTH, HOOP.BACKBOARD_HEIGHT, HOOP.BACKBOARD_THICKNESS);
     const bbMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
     const bb = new THREE.Mesh(bbGeo, bbMat);
-    bb.position.set(0, HOOP.HEIGHT + HOOP.BACKBOARD_HEIGHT / 2 + 0.1, -side * 0.08);
+    bb.position.set(0, HOOP.HEIGHT + HOOP.BACKBOARD_HEIGHT / 2 + 0.1, -side * 0.05);
     bb.castShadow = true;
     hoopGroup.add(bb);
 
-    // Backboard box (square in center)
+    // Box marking on the inward-facing backboard face
     const boxGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.59, 0.45, 0.01));
     const boxLine = new THREE.LineSegments(boxGeo, new THREE.LineBasicMaterial({ color: 0xff4400 }));
     boxLine.position.copy(bb.position);
     boxLine.position.z -= side * 0.04;
     hoopGroup.add(boxLine);
 
-    // Rim
+    // Rim extends INWARD from the baseline by OVERHANG (local z = -side*OVERHANG)
     const rimGeo = new THREE.TorusGeometry(HOOP.RIM_RADIUS, 0.018, 8, 24);
     const rimMat = new THREE.MeshLambertMaterial({ color: 0xff4400 });
     const rim = new THREE.Mesh(rimGeo, rimMat);
     rim.rotation.x = Math.PI / 2;
-    rim.position.set(0, HOOP.HEIGHT, side * (0.08 + HOOP.RIM_RADIUS));
+    rim.position.set(0, HOOP.HEIGHT, -side * HOOP.OVERHANG);
     rim.castShadow = true;
     hoopGroup.add(rim);
 
@@ -216,17 +215,18 @@ export class Court {
     const netGroup = this._buildNet(rim.position);
     hoopGroup.add(netGroup);
 
-    // Arm connecting pole to backboard
-    const armGeo = new THREE.BoxGeometry(0.05, 0.05, 0.6);
+    // Arm from pole top to above the rim
+    const armGeo = new THREE.BoxGeometry(0.05, 0.05, HOOP.OVERHANG);
     const arm = new THREE.Mesh(armGeo, poleMat);
-    arm.position.set(0, HOOP.HEIGHT + 0.2, -side * 0.3);
+    arm.position.set(0, HOOP.HEIGHT + 0.2, -side * HOOP.OVERHANG / 2);
     hoopGroup.add(arm);
 
-    hoopGroup.position.set(0, 0, side * W2);
+    // Group placed at the baseline so the rim lands at side*(LENGTH/2 - OVERHANG)
+    hoopGroup.position.set(0, 0, side * (COURT.LENGTH / 2));
 
-    // Store rim position for collision detection
+    // Store rim world position for collision detection
     this[side > 0 ? 'rimTop' : 'rimBottom'] = {
-      position: new THREE.Vector3(0, HOOP.HEIGHT, side * W2 + side * (0.08 + HOOP.RIM_RADIUS)),
+      position: new THREE.Vector3(0, HOOP.HEIGHT, side * (COURT.LENGTH / 2 - HOOP.OVERHANG)),
       radius: HOOP.RIM_RADIUS,
     };
 
@@ -354,13 +354,13 @@ export class Court {
 
   getRimPositions() {
     return [
-      { position: new THREE.Vector3(0, HOOP.HEIGHT, COURT.LENGTH / 2 - HOOP.OVERHANG + 0.08 + HOOP.RIM_RADIUS), side: 1 },
-      { position: new THREE.Vector3(0, HOOP.HEIGHT, -(COURT.LENGTH / 2 - HOOP.OVERHANG + 0.08 + HOOP.RIM_RADIUS)), side: -1 },
+      { position: new THREE.Vector3(0, HOOP.HEIGHT, COURT.LENGTH / 2 - HOOP.OVERHANG), side: 1 },
+      { position: new THREE.Vector3(0, HOOP.HEIGHT, -(COURT.LENGTH / 2 - HOOP.OVERHANG)), side: -1 },
     ];
   }
 
   isInThreePointRange(position, attackingSign) {
-    const rimZ = attackingSign * (COURT.LENGTH / 2 - HOOP.OVERHANG + 0.08 + HOOP.RIM_RADIUS);
+    const rimZ = attackingSign * (COURT.LENGTH / 2 - HOOP.OVERHANG);
     const dx = position.x;
     const dz = position.z - rimZ;
     const dist = Math.sqrt(dx * dx + dz * dz);
