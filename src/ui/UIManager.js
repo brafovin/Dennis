@@ -21,6 +21,11 @@ function injectCriticalStyles() {
     }
     .ui-screen.hidden { display: none !important; }
 
+    /* GLOBAL hide rule — must win over .halftime-screen{display:flex}, .modal-overlay{display:flex} etc.
+       This is the critical fix: #halftime-modal/#result-modal are full-screen dark overlays
+       (z-index 50/100) that were NOT being hidden, covering the menu and blocking all clicks. */
+    .hidden { display: none !important; }
+
     /* Buttons — all interactive */
     .bb-btn {
       display: block; width: 100%;

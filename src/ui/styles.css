@@ -64,6 +64,11 @@ body {
   display: none;
 }
 
+/* Global hide — covers .halftime-screen.hidden, .modal-overlay.hidden, etc. */
+.hidden {
+  display: none !important;
+}
+
 /* ═══════════════════════════════════════════
    MAIN MENU
 ═══════════════════════════════════════════ */
