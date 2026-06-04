@@ -2,14 +2,282 @@ import { i18n } from '../i18n/index.js';
 import { SaveSystem } from '../systems/SaveSystem.js';
 import { GAME_MODES, CONTROL_MODES, JERSEY_COLORS, SKIN_COLORS, PACK_COSTS, PLAYER_POSITIONS } from '../constants.js';
 
+// Inject critical styles directly so they are never affected by CSS caching
+function injectCriticalStyles() {
+  const existing = document.getElementById('bball-critical-styles');
+  if (existing) existing.remove();
+  const style = document.createElement('style');
+  style.id = 'bball-critical-styles';
+  style.textContent = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; background: #0d1428; color: #fff; }
+    #game-canvas { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; }
+    #ui-overlay  { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+    .ui-screen   {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: all !important;
+      background: linear-gradient(160deg,#0d1a40 0%,#162060 40%,#1a1050 70%,#0d1428 100%);
+    }
+    .ui-screen.hidden { display: none !important; }
+
+    /* Buttons — all interactive */
+    .bb-btn {
+      display: block; width: 100%;
+      padding: 15px 28px; margin: 0;
+      border-radius: 12px; border: 2px solid transparent;
+      font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      cursor: pointer !important; pointer-events: all !important;
+      transition: transform .15s, box-shadow .15s;
+      user-select: none;
+    }
+    .bb-btn:hover  { transform: translateY(-2px); }
+    .bb-btn:active { transform: scale(0.96); }
+
+    .bb-btn-orange {
+      background: linear-gradient(135deg,#ff9a00,#e06800);
+      color: #ffffff; border-color: #ffb830;
+      box-shadow: 0 4px 20px rgba(255,154,0,.5);
+    }
+    .bb-btn-orange:hover { box-shadow: 0 6px 28px rgba(255,154,0,.75); }
+
+    .bb-btn-blue {
+      background: linear-gradient(135deg,#3366ee,#1144bb);
+      color: #ffffff; border-color: #6699ff;
+      box-shadow: 0 4px 16px rgba(50,100,230,.4);
+    }
+    .bb-btn-blue:hover { box-shadow: 0 6px 22px rgba(50,100,230,.65); }
+
+    .bb-btn-ghost {
+      background: rgba(255,255,255,0.12);
+      color: #e8f0ff; border-color: rgba(150,190,255,.5);
+    }
+    .bb-btn-ghost:hover { background: rgba(255,255,255,.22); color: #fff; border-color: rgba(200,225,255,.8); }
+
+    .bb-btn-red   { background: linear-gradient(135deg,#ee3355,#bb1133); color:#fff; border-color:#ff6688; }
+    .bb-btn-green { background: linear-gradient(135deg,#22cc55,#118833); color:#fff; border-color:#44ee77; }
+    .bb-btn-gold  { background: linear-gradient(135deg,#ffd700,#cc9900); color:#111; border-color:#ffe555; }
+
+    /* Menu wrapper */
+    .bb-menu-wrap { display:flex; flex-direction:column; align-items:center; width:100%; max-width:360px; gap:11px; }
+
+    /* Title */
+    .bb-title {
+      font-size: clamp(44px,8vw,90px); font-weight:900; letter-spacing:4px;
+      color: #ff9a00; text-shadow: 0 0 30px rgba(255,154,0,.7), 0 2px 6px rgba(0,0,0,.9);
+      margin-bottom: 6px; text-align:center;
+      animation: bbGlow 3s ease-in-out infinite;
+    }
+    @keyframes bbGlow {
+      0%,100% { color:#ff9a00; text-shadow:0 0 25px rgba(255,154,0,.7); }
+      50%      { color:#ffcc00; text-shadow:0 0 50px rgba(255,220,0,.9); }
+    }
+    .bb-subtitle { color:#aac4ee; font-size:13px; letter-spacing:6px; text-transform:uppercase; margin-bottom:44px; }
+
+    /* Modal */
+    .bb-modal {
+      background: linear-gradient(145deg,#111e48,#1b2d6a);
+      border: 2px solid rgba(100,160,255,.55);
+      border-radius: 20px; padding: 36px 40px;
+      max-width: 560px; width:90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.75);
+      color: #ffffff;
+    }
+    .bb-modal h2 { font-size:26px; font-weight:900; margin-bottom:20px; }
+    .bb-section-title {
+      font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:2px;
+      color:#ff9a00; margin-bottom:12px; padding-bottom:7px;
+      border-bottom:1px solid rgba(120,170,255,.4);
+    }
+
+    /* Mode cards */
+    .bb-mode-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+    .bb-mode-card {
+      background: rgba(20,35,85,.9); border:2px solid rgba(100,155,255,.45);
+      border-radius:12px; padding:20px 12px; text-align:center; cursor:pointer !important;
+      pointer-events:all !important; transition:all .2s; color:#fff;
+    }
+    .bb-mode-card:hover, .bb-mode-card.selected {
+      border-color:#ff9a00; background:rgba(255,154,0,.15);
+      transform:translateY(-2px); box-shadow:0 6px 20px rgba(255,154,0,.25);
+    }
+    .bb-mode-card .icon { font-size:40px; margin-bottom:10px; }
+    .bb-mode-card .label { font-size:17px; font-weight:700; }
+    .bb-mode-card .desc  { font-size:11px; color:#aac4ee; margin-top:5px; }
+
+    /* Control toggle */
+    .bb-ctrl-toggle { display:flex; border-radius:12px; border:2px solid rgba(100,155,255,.45); overflow:hidden; margin-bottom:20px; }
+    .bb-ctrl-opt {
+      flex:1; padding:14px; text-align:center; cursor:pointer !important;
+      pointer-events:all !important; transition:all .2s; color:#aac4ee;
+    }
+    .bb-ctrl-opt.active { background:linear-gradient(135deg,#ff9a00,#e06800); color:#fff; font-weight:700; }
+    .bb-ctrl-opt:not(.active):hover { background:rgba(255,255,255,.08); color:#fff; }
+    .bb-ctrl-opt .cicon { font-size:26px; margin-bottom:5px; }
+    .bb-ctrl-opt .ctitle { font-size:13px; font-weight:700; text-transform:uppercase; }
+    .bb-ctrl-opt .cdesc  { font-size:11px; margin-top:3px; opacity:.8; }
+
+    /* Row buttons inside modals */
+    .bb-btn-row { display:flex; gap:12px; justify-content:center; margin-top:20px; }
+    .bb-btn-row .bb-btn { width:auto; }
+
+    /* Form inputs */
+    .bb-input {
+      background:rgba(30,50,110,.85); border:2px solid rgba(100,155,255,.5);
+      border-radius:8px; padding:9px 13px; color:#fff; font-size:14px; width:100%; outline:none;
+    }
+    .bb-input:focus { border-color:#ff9a00; }
+    .bb-label { font-size:13px; color:#aac4ee; min-width:110px; flex-shrink:0; }
+    .bb-form-row { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .bb-color-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .bb-swatch {
+      width:33px; height:33px; border-radius:7px; cursor:pointer; border:2px solid transparent;
+      transition:transform .15s, border-color .15s;
+    }
+    .bb-swatch:hover { transform:scale(1.18); }
+    .bb-swatch.sel   { border-color:#ff9a00 !important; transform:scale(1.18); }
+
+    /* Skills */
+    .bb-skill-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+    .bb-skill-bar  { flex:1; height:8px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden; }
+    .bb-skill-fill { height:100%; background:linear-gradient(90deg,#ff9a00,#ffcc00); border-radius:4px; transition:width .15s; }
+    .bb-skill-val  { font-size:14px; font-weight:700; color:#ff9a00; width:28px; text-align:right; }
+    .bb-skill-btn  {
+      width:26px; height:26px; border-radius:6px; border:1px solid rgba(120,170,255,.5);
+      background:rgba(255,255,255,.1); color:#fff; font-size:16px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .bb-skill-btn:hover { background:#ff9a00; color:#000; }
+
+    /* HUD */
+    .bb-hud-top {
+      position:absolute; top:14px; left:50%; transform:translateX(-50%);
+      display:flex; background:rgba(10,18,50,.93); border:2px solid rgba(100,155,255,.45);
+      border-radius:14px; overflow:hidden; min-width:340px; box-shadow:0 4px 20px rgba(0,0,0,.5);
+    }
+    .bb-hud-team { flex:1; padding:9px 18px; text-align:center; }
+    .bb-hud-team.t0 { background:rgba(220,40,40,.25); }
+    .bb-hud-team.t1 { background:rgba(40,40,220,.25); }
+    .bb-hud-tname { font-size:10px; color:#aac4ee; text-transform:uppercase; letter-spacing:1px; }
+    .bb-hud-score { font-size:38px; font-weight:900; font-variant-numeric:tabular-nums; }
+    .t0 .bb-hud-score { color:#ff7777; }
+    .t1 .bb-hud-score { color:#7799ff; }
+    .bb-hud-center { padding:8px 18px; text-align:center; border-left:1px solid rgba(100,155,255,.35); border-right:1px solid rgba(100,155,255,.35); min-width:95px; }
+    .bb-hud-q { font-size:11px; color:#aac4ee; text-transform:uppercase; }
+    .bb-hud-timer { font-size:26px; font-weight:700; color:#ff9a00; font-variant-numeric:tabular-nums; }
+
+    /* Pack cards */
+    .bb-pack-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin:18px 0; }
+    .bb-pack-card {
+      background:rgba(18,30,75,.95); border:2px solid rgba(100,155,255,.4);
+      border-radius:12px; padding:18px 14px; cursor:pointer !important;
+      pointer-events:all !important; transition:all .2s; text-align:center; color:#fff;
+    }
+    .bb-pack-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.4); }
+
+    /* Player card */
+    .bb-player-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; margin:16px 0; max-height:380px; overflow-y:auto; }
+    .bb-pcard {
+      background:rgba(18,30,75,.95); border:2px solid rgba(100,155,255,.4);
+      border-radius:12px; padding:16px; cursor:pointer !important;
+      pointer-events:all !important; transition:all .2s; text-align:center; color:#fff;
+    }
+    .bb-pcard:hover, .bb-pcard.sel { border-color:#ff9a00; background:rgba(255,154,0,.1); }
+
+    /* Coin display */
+    .bb-coins {
+      display:inline-flex; align-items:center; gap:8px;
+      background:rgba(255,200,0,.12); border:1px solid rgba(255,200,0,.35);
+      border-radius:24px; padding:6px 18px; font-size:16px; font-weight:700; color:#ff9a00;
+    }
+
+    /* Spin wheel */
+    .bb-wheel-wrap { position:relative; width:280px; height:280px; margin:0 auto 20px; }
+    .bb-wheel-ptr  { position:absolute; top:-14px; left:50%; transform:translateX(-50%); font-size:32px; }
+
+    /* Event popup */
+    .bb-popup {
+      position:absolute; top:45%; left:50%; transform:translate(-50%,-50%);
+      font-size:34px; font-weight:900; text-transform:uppercase; letter-spacing:4px;
+      pointer-events:none; animation:bbPop 1.6s forwards; z-index:50;
+    }
+    @keyframes bbPop {
+      0%   { opacity:0; transform:translate(-50%,-50%) scale(.5); }
+      20%  { opacity:1; transform:translate(-50%,-80%) scale(1.2); }
+      70%  { opacity:1; transform:translate(-50%,-100%) scale(1); }
+      100% { opacity:0; transform:translate(-50%,-115%) scale(.9); }
+    }
+
+    /* Loading */
+    .bb-spinner { width:56px; height:56px; border:4px solid rgba(255,255,255,.1); border-top-color:#ff9a00; border-radius:50%; animation:bbSpin .8s linear infinite; margin:20px auto; }
+    @keyframes bbSpin { to { transform:rotate(360deg); } }
+
+    /* Settings */
+    .bb-lang-btn {
+      background:rgba(255,255,255,.1); border:2px solid transparent; border-radius:8px;
+      padding:6px 10px; cursor:pointer; font-size:20px; transition:all .15s; color:#fff;
+    }
+    .bb-lang-btn:hover  { background:rgba(255,255,255,.2); }
+    .bb-lang-btn.active { border-color:#ff9a00; }
+
+    .bb-slider { -webkit-appearance:none; appearance:none; width:130px; height:6px; background:rgba(255,255,255,.2); border-radius:3px; outline:none; }
+    .bb-slider::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#ff9a00; cursor:pointer; }
+
+    /* Shot clock */
+    .bb-shotclock {
+      position:absolute; top:88px; left:50%; transform:translateX(-50%);
+      background:rgba(200,50,50,.88); border-radius:8px; padding:5px 18px;
+      font-size:20px; font-weight:700; color:#fff; border:1px solid rgba(255,100,100,.5);
+    }
+    .bb-shotclock.urgent { background:rgba(220,20,20,.96); animation:bbUrgent .5s infinite; }
+    @keyframes bbUrgent { 0%,100%{transform:translateX(-50%) scale(1)} 50%{transform:translateX(-50%) scale(1.06)} }
+
+    .bb-poss-bar {
+      position:absolute; top:88px; left:14px;
+      background:rgba(10,18,50,.88); border:1px solid rgba(100,155,255,.4);
+      border-radius:8px; padding:7px 14px; font-size:12px; color:#aac4ee;
+      display:flex; align-items:center; gap:8px;
+    }
+    .bb-poss-dot { width:10px; height:10px; border-radius:50%; }
+
+    .bb-ctrl-hint {
+      position:absolute; bottom:16px; right:16px;
+      background:rgba(0,0,0,.65); border:1px solid rgba(100,155,255,.3);
+      border-radius:12px; padding:12px 16px; font-size:12px; color:#aac4ee;
+      pointer-events:none;
+    }
+    .bb-ctrl-hint h4 { font-size:10px; text-transform:uppercase; letter-spacing:2px; color:#ff9a00; margin-bottom:8px; }
+    .bb-ctrl-line { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .bb-key { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); border-radius:4px; padding:2px 6px; font-size:11px; font-family:monospace; min-width:28px; text-align:center; color:#fff; }
+
+    .bb-charge {
+      position:absolute; bottom:110px; left:50%; transform:translateX(-50%);
+      width:200px; text-align:center; pointer-events:none;
+    }
+    .bb-charge-label { font-size:11px; text-transform:uppercase; letter-spacing:2px; color:#ff9a00; margin-bottom:5px; }
+    .bb-charge-bar   { height:12px; background:rgba(255,255,255,.1); border-radius:6px; border:1px solid rgba(100,155,255,.4); overflow:hidden; }
+    .bb-charge-fill  { height:100%; background:linear-gradient(90deg,#22cc55,#ffcc00,#ee3355); border-radius:6px; transition:width .05s linear; }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:3px; }
+
+    @media(max-width:680px){
+      .bb-mode-grid { grid-template-columns:1fr; }
+      .bb-pack-grid { grid-template-columns:1fr 1fr; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export class UIManager {
   constructor(gameManager) {
     this.gm = gameManager;
     this.currentScreen = 'main-menu';
     this.pendingGameConfig = {};
+    injectCriticalStyles();
     this._initDOM();
     this._bindGameEvents();
-    document.addEventListener('languageChanged', () => this._refreshAll());
+    document.addEventListener('languageChanged', () => { injectCriticalStyles(); this._refreshAll(); });
     this.showScreen('main-menu');
   }
 
@@ -33,17 +301,19 @@ export class UIManager {
   _buildMainMenu() {
     const el = document.getElementById('main-menu');
     el.innerHTML = `
-      <div class="menu-bg-balls" id="bg-balls"></div>
-      <div class="game-title" data-i18n="title">${i18n.t('title')}</div>
-      <div class="game-subtitle">STREET BASKETBALL 3D</div>
-      <div class="menu-buttons">
-        <button class="btn btn-primary btn-full btn-lg" id="btn-offline" data-i18n="play_offline">${i18n.t('play_offline')}</button>
-        <button class="btn btn-secondary btn-full" id="btn-online" data-i18n="play_online">${i18n.t('play_online')}</button>
-        <button class="btn btn-ghost btn-full" id="btn-create-player" data-i18n="create_player">${i18n.t('create_player')}</button>
-        <button class="btn btn-ghost btn-full" id="btn-my-players" data-i18n="my_players">${i18n.t('my_players')}</button>
-        <button class="btn btn-ghost btn-full" id="btn-packs" data-i18n="pack_store">${i18n.t('pack_store')}</button>
-        <button class="btn btn-ghost btn-full" id="btn-spin" data-i18n="spin_wheel">${i18n.t('spin_wheel')}</button>
-        <button class="btn btn-ghost btn-full" id="btn-settings" data-i18n="settings">${i18n.t('settings')}</button>
+      <div id="bg-balls" style="position:absolute;inset:0;overflow:hidden;pointer-events:none"></div>
+
+      <div class="bb-title">${i18n.t('title')}</div>
+      <div class="bb-subtitle">STREET BASKETBALL 3D</div>
+
+      <div class="bb-menu-wrap">
+        <button class="bb-btn bb-btn-orange" id="btn-offline">${i18n.t('play_offline')}</button>
+        <button class="bb-btn bb-btn-blue"   id="btn-online">${i18n.t('play_online')}</button>
+        <button class="bb-btn bb-btn-ghost"  id="btn-create-player">${i18n.t('create_player')}</button>
+        <button class="bb-btn bb-btn-ghost"  id="btn-my-players">${i18n.t('my_players')}</button>
+        <button class="bb-btn bb-btn-ghost"  id="btn-packs">${i18n.t('pack_store')}</button>
+        <button class="bb-btn bb-btn-ghost"  id="btn-spin">${i18n.t('spin_wheel')}</button>
+        <button class="bb-btn bb-btn-ghost"  id="btn-settings">${i18n.t('settings')}</button>
       </div>
     `;
 
@@ -96,60 +366,55 @@ export class UIManager {
     const controlMode = settings.controlMode || 'auto';
 
     el.innerHTML = `
-      <div class="modal-box" style="max-width:640px;width:90%">
-        <h2 style="font-size:28px;font-weight:900;margin-bottom:24px" data-i18n="select_mode">${i18n.t('select_mode')}</h2>
+      <div class="bb-modal" style="max-width:640px;width:90%">
+        <h2>${i18n.t('select_mode')}</h2>
 
-        <div class="mode-grid" id="mode-grid">
+        <div class="bb-mode-grid" id="mode-grid">
           ${[
-            { id: '1v1', icon: '🏀', label: i18n.t('mode_1v1'), desc: '1 vs 1 - Mano a mano' },
-            { id: '2v2', icon: '⛹️', label: i18n.t('mode_2v2'), desc: '2 vs 2 - Team play' },
-            { id: '3v3', icon: '🏆', label: i18n.t('mode_3v3'), desc: '3 vs 3 - Street ball' },
+            { id: '1v1', icon: '🏀', label: i18n.t('mode_1v1'), desc: '1 vs 1 – Mano a mano' },
+            { id: '2v2', icon: '⛹️', label: i18n.t('mode_2v2'), desc: '2 vs 2 – Team play' },
+            { id: '3v3', icon: '🏆', label: i18n.t('mode_3v3'), desc: '3 vs 3 – Street ball' },
           ].map(m => `
-            <div class="mode-card ${this.pendingGameConfig.mode === m.id ? 'selected' : ''}"
-                 data-mode="${m.id}">
-              <div class="mode-icon">${m.icon}</div>
-              <div class="mode-title">${m.label}</div>
-              <div class="mode-desc">${m.desc}</div>
+            <div class="bb-mode-card ${this.pendingGameConfig.mode === m.id ? 'selected' : ''}" data-mode="${m.id}">
+              <div class="icon">${m.icon}</div>
+              <div class="label">${m.label}</div>
+              <div class="desc">${m.desc}</div>
             </div>
           `).join('')}
         </div>
 
-        <div style="margin:20px 0">
-          <div style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#aabbcc;margin-bottom:12px">${i18n.t('control_mode')}</div>
-          <div class="control-toggle">
-            <div class="control-option ${controlMode === 'auto' ? 'active' : ''}" data-ctrl="auto">
-              <div class="ctrl-icon">🎮</div>
-              <div class="ctrl-title">${i18n.t('auto_mode')}</div>
-              <div class="ctrl-desc">${i18n.t('auto_desc')}</div>
-            </div>
-            <div class="control-option ${controlMode === 'manual' ? 'active' : ''}" data-ctrl="manual">
-              <div class="ctrl-icon">🕹️</div>
-              <div class="ctrl-title">${i18n.t('manual_mode')}</div>
-              <div class="ctrl-desc">${i18n.t('manual_desc')}</div>
-            </div>
+        <div class="bb-section-title">${i18n.t('control_mode')}</div>
+        <div class="bb-ctrl-toggle">
+          <div class="bb-ctrl-opt ${controlMode === 'auto' ? 'active' : ''}" data-ctrl="auto">
+            <div class="cicon">🎮</div>
+            <div class="ctitle">${i18n.t('auto_mode')}</div>
+            <div class="cdesc">${i18n.t('auto_desc')}</div>
+          </div>
+          <div class="bb-ctrl-opt ${controlMode === 'manual' ? 'active' : ''}" data-ctrl="manual">
+            <div class="cicon">🕹️</div>
+            <div class="ctitle">${i18n.t('manual_mode')}</div>
+            <div class="cdesc">${i18n.t('manual_desc')}</div>
           </div>
         </div>
 
-        <div style="display:flex;gap:12px;justify-content:center">
-          <button class="btn btn-ghost" id="btn-back-mode">${i18n.t('back')}</button>
-          <button class="btn btn-primary btn-lg" id="btn-start-game">${i18n.t('start_game')}</button>
+        <div class="bb-btn-row">
+          <button class="bb-btn bb-btn-ghost" id="btn-back-mode">${i18n.t('back')}</button>
+          <button class="bb-btn bb-btn-orange" style="padding:16px 36px;font-size:18px" id="btn-start-game">${i18n.t('start_game')}</button>
         </div>
       </div>
     `;
 
-    // Mode selection
-    el.querySelectorAll('.mode-card').forEach(card => {
+    el.querySelectorAll('.bb-mode-card').forEach(card => {
       card.onclick = () => {
-        el.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+        el.querySelectorAll('.bb-mode-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         this.pendingGameConfig.mode = card.dataset.mode;
       };
     });
 
-    // Control mode
-    el.querySelectorAll('.control-option').forEach(opt => {
+    el.querySelectorAll('.bb-ctrl-opt').forEach(opt => {
       opt.onclick = () => {
-        el.querySelectorAll('.control-option').forEach(o => o.classList.remove('active'));
+        el.querySelectorAll('.bb-ctrl-opt').forEach(o => o.classList.remove('active'));
         opt.classList.add('active');
         this.pendingGameConfig.controlMode = opt.dataset.ctrl;
         const s = SaveSystem.getSettings();
@@ -462,33 +727,32 @@ export class UIManager {
     const activeId = SaveSystem.load(SaveSystem.KEYS.ACTIVE_PLAYER);
 
     el.innerHTML = `
-      <div class="modal-box" style="max-width:600px;width:90%">
-        <h2 style="font-size:28px;font-weight:900;margin-bottom:20px">${i18n.t('my_players')}</h2>
+      <div class="bb-modal" style="max-width:600px;width:90%;text-align:center">
+        <h2>${i18n.t('my_players')}</h2>
         ${players.length === 0 ? `
-          <p style="color:#aabbcc;text-align:center;padding:40px 0">
-            Noch keine Spieler erstellt.<br>
-            <span style="font-size:48px">🏀</span>
+          <p style="color:#aac4ee;text-align:center;padding:40px 0">
+            Noch keine Spieler erstellt.<br><span style="font-size:52px">🏀</span>
           </p>
         ` : `
-          <div class="players-grid">
+          <div class="bb-player-grid">
             ${players.map(p => `
-              <div class="player-card ${p.id === activeId ? 'active-player' : ''}" data-id="${p.id}">
-                <div class="player-card-number" style="color:${p.jerseyColor}">#${p.number}</div>
-                <div class="player-card-name">${p.name}</div>
-                <div class="player-card-pos">${i18n.t(p.position)}</div>
-                ${p.id === activeId ? '<div style="font-size:11px;color:#e8a020;margin-top:6px">✓ AKTIV</div>' : ''}
+              <div class="bb-pcard ${p.id === activeId ? 'sel' : ''}" data-id="${p.id}">
+                <div style="font-size:46px;font-weight:900;color:${p.jerseyColor || '#ff9a00'}">#${p.number}</div>
+                <div style="font-size:14px;font-weight:700">${p.name}</div>
+                <div style="font-size:12px;color:#aac4ee">${i18n.t(p.position) || p.position}</div>
+                ${p.id === activeId ? '<div style="font-size:11px;color:#ff9a00;margin-top:5px;letter-spacing:1px">✓ AKTIV</div>' : ''}
               </div>
             `).join('')}
           </div>
         `}
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:20px">
-          <button class="btn btn-ghost" id="btn-back-players">${i18n.t('back')}</button>
-          <button class="btn btn-primary" id="btn-new-player">${i18n.t('create_player')}</button>
+        <div class="bb-btn-row">
+          <button class="bb-btn bb-btn-ghost" id="btn-back-players">${i18n.t('back')}</button>
+          <button class="bb-btn bb-btn-orange" id="btn-new-player">${i18n.t('create_player')}</button>
         </div>
       </div>
     `;
 
-    el.querySelectorAll('.player-card').forEach(card => {
+    el.querySelectorAll('.bb-pcard').forEach(card => {
       card.onclick = () => {
         SaveSystem.setActivePlayer(card.dataset.id);
         this._renderMyPlayers();
@@ -513,37 +777,36 @@ export class UIManager {
     const coins = SaveSystem.getCoins();
 
     const packs = [
-      { id: 'bronze', cls: 'bronze', icon: '🥉', name: i18n.t('bronze_pack'), cost: PACK_COSTS.BRONZE, odds: '3× Common, 1× Uncommon' },
-      { id: 'silver', cls: 'silver', icon: '🥈', name: i18n.t('silver_pack'), cost: PACK_COSTS.SILVER, odds: '2× Uncommon, 1× Rare' },
-      { id: 'gold',   cls: 'gold',   icon: '🥇', name: i18n.t('gold_pack'),   cost: PACK_COSTS.GOLD,   odds: '1× Rare, 1× Epic' },
-      { id: 'plat',   cls: 'plat',   icon: '💎', name: i18n.t('platinum_pack'), cost: PACK_COSTS.PLATINUM, odds: '1× Legendary' },
+      { id: 'bronze', borderColor: '#cd7f32', icon: '🥉', name: i18n.t('bronze_pack'),   cost: PACK_COSTS.BRONZE,   odds: '3× Common, 1× Uncommon' },
+      { id: 'silver', borderColor: '#c0c0c0', icon: '🥈', name: i18n.t('silver_pack'),   cost: PACK_COSTS.SILVER,   odds: '2× Uncommon, 1× Rare' },
+      { id: 'gold',   borderColor: '#ffd700', icon: '🥇', name: i18n.t('gold_pack'),     cost: PACK_COSTS.GOLD,     odds: '1× Rare, 1× Epic' },
+      { id: 'plat',   borderColor: '#e5e4e2', icon: '💎', name: i18n.t('platinum_pack'), cost: PACK_COSTS.PLATINUM, odds: '1× Legendary' },
     ];
 
     el.innerHTML = `
-      <div class="modal-box" style="max-width:560px;width:90%">
-        <h2 style="font-size:28px;font-weight:900;margin-bottom:8px">${i18n.t('packs_title')}</h2>
-        <div class="coin-display" style="justify-content:center;margin-bottom:20px">
-          🪙 <span id="pack-coins">${coins}</span> ${i18n.t('your_coins')}
-        </div>
+      <div class="bb-modal" style="max-width:560px;width:90%;text-align:center">
+        <h2>${i18n.t('packs_title')}</h2>
+        <div class="bb-coins" style="margin:0 auto 20px">🪙 <span id="pack-coins">${coins}</span> ${i18n.t('your_coins')}</div>
 
-        <div class="pack-grid">
+        <div class="bb-pack-grid">
           ${packs.map(p => `
-            <div class="pack-card ${p.cls}" data-pack="${p.id}" data-cost="${p.cost}">
-              <div class="pack-icon">${p.icon}</div>
-              <div class="pack-name">${p.name}</div>
-              <div class="pack-cost">🪙 ${p.cost}</div>
-              <div class="pack-odds">${p.odds}</div>
+            <div class="bb-pack-card" data-pack="${p.id}" data-cost="${p.cost}"
+                 style="border-color:${p.borderColor}">
+              <div style="font-size:44px;margin-bottom:8px">${p.icon}</div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px">${p.name}</div>
+              <div style="font-size:14px;color:#ff9a00;font-weight:700">🪙 ${p.cost}</div>
+              <div style="font-size:11px;color:#aac4ee;margin-top:5px">${p.odds}</div>
             </div>
           `).join('')}
         </div>
 
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:8px">
-          <button class="btn btn-ghost" id="btn-back-packs">${i18n.t('back')}</button>
+        <div class="bb-btn-row">
+          <button class="bb-btn bb-btn-ghost" id="btn-back-packs">${i18n.t('back')}</button>
         </div>
       </div>
     `;
 
-    el.querySelectorAll('.pack-card').forEach(card => {
+    el.querySelectorAll('.bb-pack-card').forEach(card => {
       card.onclick = () => {
         const cost = parseInt(card.dataset.cost);
         if (!SaveSystem.spendCoins(cost)) {
@@ -636,23 +899,21 @@ export class UIManager {
     ];
 
     el.innerHTML = `
-      <div class="modal-box" style="max-width:460px;width:90%;text-align:center">
-        <h2 style="font-size:28px;font-weight:900;margin-bottom:8px">${i18n.t('spin_title')}</h2>
-        <div class="coin-display" style="justify-content:center;margin-bottom:16px">
-          🪙 ${coins} Münzen
-        </div>
-        <div class="wheel-container">
-          <div class="wheel-pointer">▼</div>
-          <canvas class="wheel-canvas" id="wheel-canvas" width="280" height="280"></canvas>
+      <div class="bb-modal" style="max-width:460px;width:90%;text-align:center">
+        <h2>${i18n.t('spin_title')}</h2>
+        <div class="bb-coins" style="margin:8px auto 20px">🪙 ${coins} Münzen</div>
+        <div class="bb-wheel-wrap">
+          <div class="bb-wheel-ptr">▼</div>
+          <canvas id="wheel-canvas" width="280" height="280" style="border-radius:50%;box-shadow:0 0 40px rgba(255,154,0,.35)"></canvas>
         </div>
         ${canSpin ? `
-          <button class="btn btn-primary btn-lg" style="margin-top:20px" id="btn-spin-now">${i18n.t('spin')}</button>
+          <button class="bb-btn bb-btn-orange" style="margin-top:20px;max-width:200px;margin-left:auto;margin-right:auto;font-size:18px;padding:16px 36px" id="btn-spin-now">${i18n.t('spin')}</button>
         ` : `
-          <div style="color:#aabbcc;margin-top:20px;font-size:14px">
-            Du hast heute bereits gedreht.<br>Komm morgen wieder!
+          <div style="color:#aac4ee;margin-top:20px;font-size:14px;line-height:1.7">
+            Du hast heute bereits gedreht.<br>Komm morgen wieder! 🔒
           </div>
         `}
-        <button class="btn btn-ghost" style="margin-top:12px" id="btn-back-spin">${i18n.t('back')}</button>
+        <div class="bb-btn-row"><button class="bb-btn bb-btn-ghost" id="btn-back-spin">${i18n.t('back')}</button></div>
       </div>
     `;
 
@@ -778,78 +1039,59 @@ export class UIManager {
     if (!el) return;
     const settings = SaveSystem.getSettings();
 
+    const srow = (label, control) => `
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(120,170,255,.25)">
+        <div style="flex:1;font-size:15px;color:#e0eeff">${label}</div>
+        <div>${control}</div>
+      </div>`;
+
     el.innerHTML = `
-      <div class="modal-box" style="max-width:500px;width:90%">
-        <h2 style="font-size:28px;font-weight:900;margin-bottom:8px">${i18n.t('settings_title')}</h2>
+      <div class="bb-modal" style="max-width:500px;width:90%;text-align:left">
+        <h2 style="text-align:center;margin-bottom:20px">${i18n.t('settings_title')}</h2>
 
-        <div class="settings-list">
-          <!-- Language -->
-          <div class="setting-row">
-            <div class="setting-label">${i18n.t('language')}</div>
-            <div class="lang-flag-grid">
-              ${i18n.languages.map(l => `
-                <button class="lang-btn ${i18n.currentLang === l.code ? 'active' : ''}" data-lang="${l.code}" title="${l.name}">
-                  ${l.flag}
-                </button>
-              `).join('')}
-            </div>
+        ${srow(i18n.t('language'), `
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            ${i18n.languages.map(l => `
+              <button class="bb-lang-btn ${i18n.currentLang === l.code ? 'active' : ''}" data-lang="${l.code}" title="${l.name}">${l.flag}</button>
+            `).join('')}
           </div>
+        `)}
 
-          <!-- Control Mode -->
-          <div class="setting-row">
-            <div class="setting-label">${i18n.t('control_mode')}</div>
-            <div class="control-toggle" style="max-width:240px">
-              <div class="control-option ${settings.controlMode === 'auto' ? 'active' : ''}" data-ctrl="auto" style="padding:8px 16px">
-                <div style="font-size:12px">${i18n.t('auto_mode')}</div>
-              </div>
-              <div class="control-option ${settings.controlMode === 'manual' ? 'active' : ''}" data-ctrl="manual" style="padding:8px 16px">
-                <div style="font-size:12px">${i18n.t('manual_mode')}</div>
-              </div>
-            </div>
+        ${srow(i18n.t('control_mode'), `
+          <div class="bb-ctrl-toggle" style="max-width:220px;margin:0">
+            <div class="bb-ctrl-opt ${settings.controlMode === 'auto' ? 'active' : ''}" data-ctrl="auto" style="padding:8px 14px;font-size:12px">${i18n.t('auto_mode')}</div>
+            <div class="bb-ctrl-opt ${settings.controlMode === 'manual' ? 'active' : ''}" data-ctrl="manual" style="padding:8px 14px;font-size:12px">${i18n.t('manual_mode')}</div>
           </div>
+        `)}
 
-          <!-- Sound -->
-          <div class="setting-row">
-            <div class="setting-label">${i18n.t('sound')}</div>
-            <input type="range" class="slider-input" min="0" max="100"
-                   value="${(settings.soundVolume || 0.8) * 100}" id="vol-sound">
-          </div>
+        ${srow(i18n.t('sound'), `<input type="range" class="bb-slider" id="vol-sound" min="0" max="100" value="${(settings.soundVolume||0.8)*100}">`)}
+        ${srow(i18n.t('music'), `<input type="range" class="bb-slider" id="vol-music" min="0" max="100" value="${(settings.musicVolume||0.5)*100}">`)}
 
-          <!-- Music -->
-          <div class="setting-row">
-            <div class="setting-label">${i18n.t('music')}</div>
-            <input type="range" class="slider-input" min="0" max="100"
-                   value="${(settings.musicVolume || 0.5) * 100}" id="vol-music">
-          </div>
+        ${srow(i18n.t('graphics'), `
+          <select id="select-graphics" class="bb-input" style="width:auto;padding:7px 12px">
+            <option value="low" ${settings.graphics==='low'?'selected':''}>${i18n.t('low')}</option>
+            <option value="medium" ${settings.graphics==='medium'?'selected':''}>${i18n.t('medium')}</option>
+            <option value="high" ${settings.graphics==='high'?'selected':''}>${i18n.t('high')}</option>
+          </select>
+        `)}
 
-          <!-- Graphics -->
-          <div class="setting-row">
-            <div class="setting-label">${i18n.t('graphics')}</div>
-            <select id="select-graphics" style="background:rgba(255,255,255,0.07);border:1px solid rgba(100,150,255,0.3);border-radius:8px;padding:6px 12px;color:#fff">
-              <option value="low" ${settings.graphics === 'low' ? 'selected' : ''}>${i18n.t('low')}</option>
-              <option value="medium" ${settings.graphics === 'medium' ? 'selected' : ''}>${i18n.t('medium')}</option>
-              <option value="high" ${settings.graphics === 'high' ? 'selected' : ''}>${i18n.t('high')}</option>
-            </select>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:12px;justify-content:center">
-          <button class="btn btn-ghost" id="btn-back-settings">${i18n.t('back')}</button>
-          <button class="btn btn-primary" id="btn-save-settings">${i18n.t('apply')}</button>
+        <div class="bb-btn-row" style="margin-top:24px">
+          <button class="bb-btn bb-btn-ghost" id="btn-back-settings">${i18n.t('back')}</button>
+          <button class="bb-btn bb-btn-orange" id="btn-save-settings">${i18n.t('apply')}</button>
         </div>
       </div>
     `;
 
-    el.querySelectorAll('.lang-btn').forEach(btn => {
+    el.querySelectorAll('.bb-lang-btn').forEach(btn => {
       btn.onclick = () => {
         i18n.setLanguage(btn.dataset.lang);
         this._renderSettings();
       };
     });
 
-    el.querySelectorAll('.control-option').forEach(opt => {
+    el.querySelectorAll('.bb-ctrl-opt').forEach(opt => {
       opt.onclick = () => {
-        el.querySelectorAll('.control-option').forEach(o => o.classList.remove('active'));
+        el.querySelectorAll('.bb-ctrl-opt').forEach(o => o.classList.remove('active'));
         opt.classList.add('active');
         settings.controlMode = opt.dataset.ctrl;
       };
@@ -872,35 +1114,34 @@ export class UIManager {
   _buildHUD() {
     const el = document.getElementById('hud');
     if (!el) return;
+    el.style.background = 'transparent';
     el.innerHTML = `
-      <div class="hud-top">
-        <div class="hud-team team-0">
-          <div class="hud-team-name">HOME</div>
-          <div class="hud-score" id="score-0">0</div>
-          <div class="hud-fouls" id="fouls-0">Fouls: 0</div>
+      <div class="bb-hud-top">
+        <div class="bb-hud-team t0">
+          <div class="bb-hud-tname">HOME</div>
+          <div class="bb-hud-score" id="score-0">0</div>
         </div>
-        <div class="hud-center">
-          <div class="hud-quarter" id="quarter-label">Q1</div>
-          <div class="hud-timer" id="quarter-timer">2:00</div>
+        <div class="bb-hud-center">
+          <div class="bb-hud-q" id="quarter-label">Q1</div>
+          <div class="bb-hud-timer" id="quarter-timer">2:00</div>
         </div>
-        <div class="hud-team team-1">
-          <div class="hud-team-name">AWAY</div>
-          <div class="hud-score" id="score-1">0</div>
-          <div class="hud-fouls" id="fouls-1">Fouls: 0</div>
+        <div class="bb-hud-team t1">
+          <div class="bb-hud-tname">AWAY</div>
+          <div class="bb-hud-score" id="score-1">0</div>
         </div>
       </div>
-      <div class="shot-clock" id="shot-clock">24</div>
-      <div class="possession-indicator" id="possession-bar">
-        <div class="possession-dot" id="poss-dot" style="background:#ff6666"></div>
+      <div class="bb-shotclock" id="shot-clock">24</div>
+      <div class="bb-poss-bar" id="possession-bar">
+        <div class="bb-poss-dot" id="poss-dot" style="background:#ff7777"></div>
         <span id="poss-label">HOME</span>
       </div>
-      <div class="shot-charge hidden" id="shot-charge">
-        <div class="shot-charge-label">POWER</div>
-        <div class="shot-charge-bar">
-          <div class="shot-charge-fill" id="shot-charge-fill" style="width:0%"></div>
+      <div id="shot-charge" style="display:none">
+        <div class="bb-charge">
+          <div class="bb-charge-label">POWER</div>
+          <div class="bb-charge-bar"><div class="bb-charge-fill" id="shot-charge-fill" style="width:0%"></div></div>
         </div>
       </div>
-      <div class="hud-controls" id="hud-controls"></div>
+      <div class="bb-ctrl-hint" id="hud-controls"></div>
     `;
 
     this._updateControlsHint();
@@ -911,24 +1152,23 @@ export class UIManager {
     if (!el) return;
     const settings = SaveSystem.getSettings();
     const isAuto = (settings.controlMode || 'auto') === 'auto';
+    const row = (key, label) => `<div class="bb-ctrl-line"><span class="bb-key">${key}</span> ${label}</div>`;
 
     el.innerHTML = `
       <h4>STEUERUNG</h4>
+      ${row('WASD','Bewegen')}
       ${isAuto ? `
-        <div class="ctrl-line"><span class="key-badge">WASD</span> Bewegen</div>
-        <div class="ctrl-line"><span class="key-badge">J</span> Werfen</div>
-        <div class="ctrl-line"><span class="key-badge">K</span> Passen</div>
-        <div class="ctrl-line"><span class="key-badge">Shift</span> Sprint</div>
+        ${row('J','Werfen')}
+        ${row('K','Passen')}
       ` : `
-        <div class="ctrl-line"><span class="key-badge">WASD</span> Bewegen</div>
-        <div class="ctrl-line"><span class="key-badge">Space ↑</span> Werfen</div>
-        <div class="ctrl-line"><span class="key-badge">E</span> Passen</div>
-        <div class="ctrl-line"><span class="key-badge">Q</span> Dribble</div>
-        <div class="ctrl-line"><span class="key-badge">Shift</span> Sprint</div>
-        <div class="ctrl-line"><span class="key-badge">R</span> Dreher</div>
-        <div class="ctrl-line"><span class="key-badge">Maus</span> Kamera</div>
+        ${row('Space↑','Werfen')}
+        ${row('E','Passen')}
+        ${row('Q','Dribble')}
+        ${row('R','Dreher')}
+        ${row('Maus','Kamera')}
       `}
-      <div class="ctrl-line" style="margin-top:6px"><span class="key-badge">Esc</span> Pause</div>
+      ${row('Shift','Sprint')}
+      ${row('Esc','Pause')}
     `;
   }
 
@@ -964,20 +1204,23 @@ export class UIManager {
     }
     if (shotChargeEl) {
       if (shotCharge !== undefined) {
-        shotChargeEl.classList.remove('hidden');
+        shotChargeEl.style.display = 'block';
         if (shotFill) shotFill.style.width = (shotCharge * 100) + '%';
       } else {
-        shotChargeEl.classList.add('hidden');
+        shotChargeEl.style.display = 'none';
       }
     }
   }
 
   showEventPopup(text, type = 'score') {
     const popup = document.createElement('div');
-    popup.className = `event-popup popup-${type}`;
+    popup.className = 'bb-popup';
+    const colors = { score:'#ff9a00', three:'#22ff88', miss:'#ff4444', steal:'#44aaff', block:'#ff44ff' };
+    popup.style.color = colors[type] || '#ff9a00';
+    popup.style.textShadow = `0 0 30px ${colors[type] || '#ff9a00'}`;
     popup.textContent = text;
     document.getElementById('hud').appendChild(popup);
-    setTimeout(() => popup.remove(), 1600);
+    setTimeout(() => popup.remove(), 1700);
   }
 
   // ───────────────────────────────────────────
@@ -993,18 +1236,20 @@ export class UIManager {
     const resultColor = result === 'win' ? '#22cc44' : result === 'lose' ? '#cc2244' : '#e8a020';
 
     overlay.innerHTML = `
-      <div class="modal-box">
-        <div class="modal-title" style="color:${resultColor}">${resultText}</div>
-        <div class="result-score">
-          <span class="score-0">${score[0]}</span>
-          <span class="divider">:</span>
-          <span class="score-1">${score[1]}</span>
+      <div class="bb-modal" style="text-align:center">
+        <div style="font-size:38px;font-weight:900;color:${resultColor};margin-bottom:12px">${resultText}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:24px;font-size:64px;font-weight:900;margin:16px 0">
+          <span style="color:#ff7777">${score[0]}</span>
+          <span style="color:#aac4ee;font-size:36px">:</span>
+          <span style="color:#7799ff">${score[1]}</span>
         </div>
-        <div class="reward-box">🪙 +${coins} ${i18n.t('earned_coins')}</div>
-        ${earnedPack ? `<div class="reward-box" style="color:#cd7f32">🥉 ${i18n.t('earned_pack')}!</div>` : ''}
-        <div style="display:flex;gap:12px;justify-content:center;margin-top:20px">
-          <button class="btn btn-ghost" id="btn-result-menu">${i18n.t('main_menu')}</button>
-          <button class="btn btn-primary" id="btn-result-again">${i18n.t('play_again')}</button>
+        <div style="background:rgba(255,200,0,.12);border:1px solid rgba(255,200,0,.35);border-radius:12px;padding:14px;margin:12px 0;font-size:20px;font-weight:700;color:#ff9a00">
+          🪙 +${coins} ${i18n.t('earned_coins')}
+        </div>
+        ${earnedPack ? `<div style="background:rgba(205,127,50,.12);border:1px solid rgba(205,127,50,.4);border-radius:12px;padding:12px;margin:8px 0;font-size:16px;color:#cd7f32">🥉 ${i18n.t('earned_pack')}!</div>` : ''}
+        <div class="bb-btn-row" style="margin-top:24px">
+          <button class="bb-btn bb-btn-ghost" id="btn-result-menu">${i18n.t('main_menu')}</button>
+          <button class="bb-btn bb-btn-orange" id="btn-result-again">${i18n.t('play_again')}</button>
         </div>
       </div>
     `;
@@ -1047,9 +1292,9 @@ export class UIManager {
     const el = document.getElementById('loading-screen');
     if (!el) return;
     el.innerHTML = `
-      <div class="game-title">BASKETBALL PRO</div>
-      <div class="loading-spinner"></div>
-      <div style="color:#aabbcc;font-size:14px">Wird geladen...</div>
+      <div class="bb-title">BASKETBALL PRO</div>
+      <div class="bb-spinner"></div>
+      <div style="color:#aac4ee;font-size:14px;letter-spacing:2px">WIRD GELADEN ...</div>
     `;
   }
 
@@ -1154,12 +1399,12 @@ export class UIManager {
     el.id = 'pause-modal';
     el.className = 'modal-overlay';
     el.innerHTML = `
-      <div class="modal-box" style="max-width:360px">
-        <h2 style="font-size:32px;font-weight:900;margin-bottom:24px">⏸ PAUSE</h2>
+      <div class="bb-modal" style="max-width:340px;text-align:center">
+        <div style="font-size:36px;font-weight:900;margin-bottom:24px">⏸ PAUSE</div>
         <div style="display:flex;flex-direction:column;gap:12px">
-          <button class="btn btn-primary btn-full" id="btn-resume">Weiter spielen</button>
-          <button class="btn btn-ghost btn-full" id="btn-settings-pause">Einstellungen</button>
-          <button class="btn btn-danger btn-full" id="btn-quit-pause">Zum Menü</button>
+          <button class="bb-btn bb-btn-orange" id="btn-resume">Weiter spielen</button>
+          <button class="bb-btn bb-btn-ghost"  id="btn-settings-pause">Einstellungen</button>
+          <button class="bb-btn bb-btn-red"    id="btn-quit-pause">Zum Menü</button>
         </div>
       </div>
     `;
