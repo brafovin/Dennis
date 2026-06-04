@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Basketball Pro 3D</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏀</text></svg>" />
+</head>
+<body>
+
+  <!-- THREE.JS CANVAS -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- UI OVERLAY -->
+  <div id="ui-overlay">
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="ui-screen">
+      <!-- filled by UIManager -->
+    </div>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="ui-screen hidden">
+      <!-- filled by UIManager -->
+    </div>
+
+    <!-- Mode Selector (offline) -->
+    <div id="mode-selector" class="ui-screen hidden">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- Player Creator -->
+    <div id="player-creator" class="ui-screen hidden">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- My Players -->
+    <div id="my-players" class="ui-screen hidden">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- Pack Store -->
+    <div id="pack-store" class="ui-screen hidden">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- Spin Wheel -->
+    <div id="spin-wheel" class="ui-screen hidden">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- Settings -->
+    <div id="settings" class="ui-screen hidden">
+      <!-- filled dynamically -->
+    </div>
+
+    <!-- HUD (in-game) -->
+    <div id="hud" class="ui-screen hidden">
+      <!-- filled by UIManager._buildHUD() -->
+    </div>
+
+  </div>
+
+  <!-- Modals (always in DOM, shown/hidden) -->
+  <div id="result-modal"    class="modal-overlay hidden"></div>
+  <div id="halftime-modal"  class="halftime-screen hidden"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
